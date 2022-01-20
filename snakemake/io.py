@@ -502,7 +502,7 @@ class _IOFile(str):
         try:
             _stat = os.stat(self.file, follow_symlinks=False)
 
-            is_symlink = stat.S_ISLNK(_stat.st_mode)
+            is_symlink = False
             is_dir = stat.S_ISDIR(_stat.st_mode)
             mtime = _stat.st_mtime
 
