@@ -463,7 +463,7 @@ class _IOFile(str):
     @property
     @iocache
     def exists_local(self):
-        return os.path.exists(self.file)
+        return os.path.exists(self.file) or os.path.islink(self.file)
 
     @property
     @iocache
