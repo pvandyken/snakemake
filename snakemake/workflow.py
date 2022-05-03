@@ -16,7 +16,7 @@ from functools import partial
 from operator import attrgetter
 import copy
 import subprocess
-from pathlib import Path
+from pathlib import Path, PosixPath
 from urllib.request import pathname2url, url2pathname
 
 
@@ -56,6 +56,7 @@ from snakemake.io import (
     report,
     multiext,
     IOFile,
+    sourcecache_entry,
 )
 from snakemake.persistence import Persistence
 from snakemake.utils import update_config
@@ -764,8 +765,18 @@ class Workflow:
             self.persistence.deactivate_cache()
 
         if cleanup_metadata:
+            failed = []
             for f in cleanup_metadata:
-                self.persistence.cleanup_metadata(f)
+                success = self.persistence.cleanup_metadata(f)
+                if not success:
+                    failed.append(f)
+            if failed:
+                logger.warning(
+                    "Failed to clean up metadata for the following files because the metadata was not present.\n"
+                    "If this is expected, there is nothing to do.\nOtherwise, the reason might be file system latency "
+                    "or still running jobs.\nConsider running metadata cleanup again.\nFiles:\n"
+                    + "\n".join(failed)
+                )
             return True
 
         if unlock:
@@ -1098,7 +1109,7 @@ class Workflow:
 
         success = self.scheduler.schedule()
 
-        if not immediate_submit and not dryrun:
+        if not immediate_submit and not dryrun and self.mode == Mode.default:
             dag.cleanup_workdir()
 
         if success:
@@ -1144,9 +1155,19 @@ class Workflow:
 
         frame = inspect.currentframe().f_back
         calling_file = frame.f_code.co_filename
-        calling_dir = os.path.dirname(calling_file)
-        path = smart_join(calling_dir, rel_path)
-        return self.sourcecache.get_path(infer_source_file(path))
+
+        if calling_file == self.included_stack[-1].get_path_or_uri():
+            # called from current snakefile, we can try to keep the original source
+            # file annotation
+            path = self.current_basedir.join(rel_path)
+        else:
+            # heuristically determine path
+            calling_dir = os.path.dirname(calling_file)
+            path = smart_join(calling_dir, rel_path)
+
+        return sourcecache_entry(
+            self.sourcecache.get_path(infer_source_file(path)), path
+        )
 
     @property
     def snakefile(self):
@@ -1294,6 +1315,9 @@ class Workflow:
                         fp
                     )
                 )
+            else:
+                # CLI configfiles have been specified, do not throw an error but update with their values
+                update_config(self.config, self.overwrite_config)
 
     def set_pepfile(self, path):
 
@@ -1370,6 +1394,7 @@ class Workflow:
         )
         rule = self.get_rule(name)
         rule.is_checkpoint = checkpoint
+        rule.module_globals = self.modifier.globals
 
         def decorate(ruleinfo):
             nonlocal name
@@ -1908,6 +1933,7 @@ class Workflow:
                 ruleinfo = maybe_ruleinfo if not callable(maybe_ruleinfo) else None
                 with WorkflowModifier(
                     self,
+                    parent_modifier=self.modifier,
                     rulename_modifier=get_name_modifier_func(
                         rules, name_modifier, parent_modifier=self.modifier
                     ),

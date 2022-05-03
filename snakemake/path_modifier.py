@@ -5,7 +5,7 @@ __license__ = "MIT"
 
 import os
 from snakemake.exceptions import WorkflowError
-from snakemake.io import is_flagged, AnnotatedString, flag, get_flag_value
+from snakemake.io import is_callable, is_flagged, AnnotatedString, flag, get_flag_value
 
 
 PATH_MODIFIER_FLAG = "path_modified"
@@ -47,6 +47,10 @@ class PathModifier:
             if not hasattr(modified_path, "flags"):
                 modified_path = AnnotatedString(modified_path)
             modified_path.flags.update(path.flags)
+            if is_flagged(modified_path, "multiext"):
+                modified_path.flags["multiext"] = self.apply_default_remote(
+                    self.replace_prefix(modified_path.flags["multiext"], property)
+                )
         # Flag the path as modified and return.
         modified_path = flag(modified_path, PATH_MODIFIER_FLAG, self)
         return modified_path
@@ -57,6 +61,7 @@ class PathModifier:
             or os.path.isabs(path)
             or path.startswith("..")
             or is_flagged(path, "remote_object")
+            or is_callable(path)
         ):
             # no replacement
             return path
@@ -78,9 +83,9 @@ class PathModifier:
             else:
                 # no matching prefix
                 return path
-
-        # prefix case
-        return self.prefix + path
+        else:
+            # prefix case
+            return self.prefix + path
 
     def apply_default_remote(self, path):
         """Apply the defined default remote provider to the given path and return the updated _IOFile.

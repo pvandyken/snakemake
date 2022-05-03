@@ -639,8 +639,11 @@ class DAG:
                 yield from filterfalse(partial(needed, job), tempfiles)
 
         for f in unneeded_files():
-            logger.info("Removing temporary output file {}.".format(f))
-            f.remove(remove_non_empty_dir=True)
+            if self.dryrun:
+                logger.info(f"Would remove temporary output {f}")
+            else:
+                logger.info("Removing temporary output {}.".format(f))
+                f.remove(remove_non_empty_dir=True)
 
     def handle_log(self, job, upload_remote=True):
         for f in job.log:
@@ -1396,7 +1399,7 @@ class DAG:
                 depending = list(self.depending[job])
                 # re-evaluate depending jobs, replace and update DAG
                 for j in depending:
-                    logger.info("Updating job {}.".format(j))
+                    logger.debug("Updating job {}.".format(j))
                     newjob = j.updated()
                     self.replace_job(j, newjob, recursive=False)
                     updated = True

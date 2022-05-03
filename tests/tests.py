@@ -1711,3 +1711,51 @@ def test_pipe_depend():
 @skip_on_windows  # no pipe support on windows
 def test_pipe_depend_target_file():
     run(dpath("test_pipe_depend"), targets=["test.txt"], shouldfail=True)
+
+
+@skip_on_windows  # platform independent issue
+def test_github_issue1500():
+    run(dpath("test_github_issue1500"), dryrun=True)
+
+
+def test_github_issue1542():
+    run(dpath("test_github_issue1542"), dryrun=True)
+
+
+def test_github_issue1550():
+    from snakemake.resources import DefaultResources
+
+    run(
+        dpath("test_github_issue1550"),
+        resources={"mem_mb": 4000},
+        default_resources=DefaultResources(
+            ["mem_mb=max(2*input.size, 1000)", "disk_mb=max(2*input.size, 1000)"]
+        ),
+    )
+
+
+def test_github_issue1498():
+    run(dpath("test_github_issue1498"))
+
+
+def test_cleanup_metadata_fail():
+    run(dpath("test09"), cleanup_metadata=["xyz"])
+
+
+@skip_on_windows  # same on win, no need to test
+def test_github_issue1389():
+    run(dpath("test_github_issue1389"), resources={"foo": 4}, shouldfail=True)
+
+
+@skip_on_windows
+def test_github_issue1261():
+    run(dpath("test_github_issue1261"), shouldfail=True, check_results=True)
+
+
+def test_rule_inheritance_globals():
+    run(
+        dpath("test_rule_inheritance_globals"),
+        report="report.html",
+        targets=["foo.txt"],
+        check_md5=False,
+    )

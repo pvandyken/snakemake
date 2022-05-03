@@ -784,7 +784,7 @@ class ClusterExecutor(RealExecutor):
             if len(wait_for_files) > 20:
                 wait_for_files_file = self.get_jobscript(job) + ".waitforfilesfile.txt"
                 with open(wait_for_files_file, "w") as fd:
-                    print(wait_for_files, sep="\n", file=fd)
+                    print(*wait_for_files, sep="\n", file=fd)
 
                 waitfiles_parameter = format_cli_arg(
                     "--wait-for-files-file", wait_for_files_file
@@ -996,7 +996,8 @@ class GenericClusterExecutor(ClusterExecutor):
 
     def get_job_exec_prefix(self, job):
         if self.assume_shared_fs:
-            return f"cd {self.workflow.workdir_init}"
+            # quoting the workdir since it may contain spaces
+            return f"cd {repr(self.workflow.workdir_init)}"
         else:
             return ""
 

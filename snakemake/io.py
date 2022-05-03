@@ -821,7 +821,8 @@ def wait_for_files(
             "Waiting at most {} seconds for missing files.".format(latency_wait)
         )
         for _ in range(latency_wait):
-            if not get_missing():
+            missing = get_missing()
+            if not missing:
                 return
             time.sleep(1)
         missing = "\n".join(get_missing())
@@ -1079,6 +1080,10 @@ def repeat(value, n_repeat):
 
 def checkpoint_target(value):
     return flag(value, "checkpoint_target")
+
+
+def sourcecache_entry(value, orig_path_or_uri):
+    return flag(value, "sourcecache_entry", orig_path_or_uri)
 
 
 ReportObject = collections.namedtuple(
