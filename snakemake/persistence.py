@@ -345,6 +345,11 @@ class Persistence:
             )
         )
 
+    def metadata_file(self, path):
+        if self._exists_record(self._metadata_path, path):
+            return self._record_path(self._metadata_path, path)
+        return None
+
     def metadata(self, path):
         return self._read_record(self._metadata_path, path)
 
