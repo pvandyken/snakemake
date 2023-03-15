@@ -551,6 +551,7 @@ class Workflow:
         list_input_changes=False,
         list_params_changes=False,
         list_untracked=False,
+        list_tracked=True,
         list_conda_envs=False,
         summary=False,
         archive=None,
@@ -563,6 +564,7 @@ class Workflow:
         notemp=False,
         nodeps=False,
         cleanup_metadata=None,
+        get_metadata=None,
         conda_cleanup_envs=False,
         cleanup_containers=False,
         cleanup_shadow=False,
@@ -732,6 +734,13 @@ class Workflow:
                     "or still running jobs.\nConsider running metadata cleanup again.\nFiles:\n"
                     + "\n".join(failed)
                 )
+            return True
+
+        if get_metadata:
+            for f in get_metadata:
+                path = self.persistence.metadata_file(f)
+                if path:
+                    print(path)
             return True
 
         if unlock:
@@ -925,6 +934,9 @@ class Workflow:
         elif list_untracked:
             dag.list_untracked()
             return True
+        elif list_tracked:
+            dag.list_tracked()
+            return True 
 
         if self.use_singularity and self.assume_shared_fs:
             dag.pull_container_imgs(

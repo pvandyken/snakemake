@@ -2391,6 +2391,14 @@ class DAG:
                                 # Remove non-empty dirs if flagged as temp()
                                 f.remove(remove_non_empty_dir=only_temp)
 
+    def list_tracked(self):
+        """List files in the workdir that are not in the dag."""
+        used_files = set()
+        for job in self.jobs:
+            used_files.update(job.expanded_output)
+        for f in sorted(list(used_files)):
+            print(f)
+
     def list_untracked(self):
         """List files in the workdir that are not in the dag."""
         used_files = set()
