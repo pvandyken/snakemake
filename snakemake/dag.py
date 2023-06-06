@@ -27,7 +27,7 @@ from snakemake.io import (
     is_flagged,
     IOFile,
 )
-from snakemake.jobs import Reason, JobFactory, GroupJobFactory, Job
+from snakemake.jobs import GroupJob, Reason, JobFactory, GroupJobFactory, Job
 from snakemake.exceptions import MissingInputException, WildcardError
 from snakemake.exceptions import MissingRuleException, AmbiguousRuleException
 from snakemake.exceptions import CyclicGraphException, MissingOutputException
@@ -755,9 +755,9 @@ class DAG:
 
         for f in unneeded_files():
             if self.dryrun:
-                logger.info(f"Would remove temporary output {f}")
+                logger.debug(f"Would remove temporary output {f}")
             else:
-                logger.info("Removing temporary output {}.".format(f))
+                logger.debug("Removing temporary output {}.".format(f))
                 f.remove(remove_non_empty_dir=True)
 
     def handle_log(self, job, upload_remote=True):
@@ -1141,12 +1141,13 @@ class DAG:
                 if output_mintime_:
                     # Input is updated if it is newer that the oldest output file
                     # and does not have the same checksum as the one previously recorded.
+                    # print(job)
                     updated_input = [
                         f
                         for f in job.input
                         if f.exists
                         and f.is_newer(output_mintime_)
-                        and not is_same_checksum(f, job)
+                        # and not is_same_checksum(f, job)
                     ]
                     reason.updated_input.update(updated_input)
                 if not updated_input:
@@ -1329,9 +1330,7 @@ class DAG:
             # merge with previously determined groups if present
             for j in group:
                 if j in groups:
-                    other = groups[j]
-                    other.merge(group)
-                    group = other
+                    group = groups[j].merge(group)
             # update assignment
             for j in group:
                 # Since groups might have been merged, we need
@@ -1354,7 +1353,7 @@ class DAG:
                     if len(chunk) > 1:
                         primary = chunk[0]
                         for secondary in chunk[1:]:
-                            primary.merge(secondary)
+                            primary = primary.merge(secondary)
                         for j in primary:
                             self._group[j] = primary
 
@@ -2402,17 +2401,21 @@ class DAG:
                 for file in chain(job.local_input, job.local_output, job.log)
             )
         for root, dirs, files in os.walk(os.getcwd()):
+            # ignore tracked directories
+            if ".snakemake_timestamp" in files and os.path.relpath(root) in used_files:
+                continue 
+
             # Ignore hidden files and don't traverse into hidden dirs
             files_in_cwd.update(
                 [
                     os.path.relpath(os.path.join(root, f))
                     for f in files
-                    if not f[0] == "."
+                    if f == ".snakemake_timestamp" or not f[0] == "."
                 ]
             )
             dirs[:] = [d for d in dirs if not d[0] == "."]
         for f in sorted(list(files_in_cwd - used_files)):
-            logger.info(f)
+            print(f)
 
     def d3dag(self, max_jobs=10000):
         def node(job):

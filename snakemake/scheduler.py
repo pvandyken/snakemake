@@ -37,7 +37,7 @@ from snakemake.executors.google_lifesciences import GoogleLifeSciencesExecutor
 from snakemake.executors.ga4gh_tes import TaskExecutionServiceExecutor
 from snakemake.exceptions import RuleException, WorkflowError, print_exception
 from snakemake.shell import shell
-from snakemake.common import ON_WINDOWS, async_run
+from snakemake.common import ON_WINDOWS, async_run, TBDString
 from snakemake.logging import logger
 
 from fractions import Fraction
@@ -276,6 +276,7 @@ class JobScheduler:
                     printshellcmds=printshellcmds,
                     assume_shared_fs=assume_shared_fs,
                     keepincomplete=keepincomplete,
+                    keepgoing=keepgoing,
                 )
                 if workflow.immediate_submit:
                     self._submit_callback = self._proceed
@@ -971,6 +972,8 @@ class JobScheduler:
 
     def calc_resource(self, name, value):
         gres = self.global_resources[name]
+        if isinstance(value, TBDString):
+            return 0
         if value > gres:
             if name == "_cores":
                 name = "threads"

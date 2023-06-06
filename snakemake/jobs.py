@@ -14,7 +14,7 @@ import shutil
 import copy
 
 from collections import defaultdict
-from itertools import chain, filterfalse
+from itertools import chain, filterfalse, groupby
 from operator import attrgetter
 from typing import Optional
 
@@ -1042,12 +1042,15 @@ class Job(AbstractJob):
             return
 
         priority = self.priority
+        inputs = list(format_files(self, self.input, self.dynamic_input))
+        if len(inputs) > 20:
+            inputs = inputs[:20] + ["..."]
         logger.job_info(
             jobid=self.dag.jobid(self),
             msg=self.message,
             name=self.rule.name,
             local=self.dag.workflow.is_local(self.rule),
-            input=list(format_files(self, self.input, self.dynamic_input)),
+            input=inputs,
             output=list(format_files(self, self.output, self.dynamic_output)),
             log=list(self.log),
             benchmark=self.benchmark,
@@ -1265,7 +1268,9 @@ class GroupJob(AbstractJob):
 
     def merge(self, other):
         assert other.groupid == self.groupid
-        self.jobs = self.jobs | other.jobs
+        return self.dag.group_job_factory.new(
+            self.groupid, self.jobs | other.jobs, self.global_resources
+        )
 
     def finalize(self):
         if self.toposorted is None:
@@ -1305,9 +1310,18 @@ class GroupJob(AbstractJob):
         return any(job.is_updated for job in self.jobs)
 
     def log_info(self, skip_dynamic=False):
-        logger.group_info(groupid=self.groupid)
-        for job in sorted(self.jobs, key=lambda j: j.rule.name):
-            job.log_info(skip_dynamic, indent=True)
+        job_summary = {}
+        for name, jobs in groupby(
+            sorted(self.jobs, key=lambda j: j.rule.name), key=lambda j: j.rule.name
+        ):
+            job_summary[name] = len(list(jobs))
+        logger.group_info(
+            groupid=self.groupid,
+            wildcards=self.merged_wildcards(),
+            jobid=self.jobid,
+            resources=self.resources,
+            jobs=job_summary,
+        )
 
     def log_error(self, msg=None, aux_logs: Optional[list] = None, **kwargs):
         job_error_info = [
@@ -1728,7 +1742,8 @@ class Reason:
                 return f
 
         def format_files(files):
-            return ", ".join(map(format_file, files))
+            end = ", ..." if len(files) > 20 else ""
+            return ", ".join(map(format_file, list(files)[:20])) + end
 
         s = list()
         if self.forced:

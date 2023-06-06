@@ -228,6 +228,7 @@ class RealExecutor(AbstractExecutor):
         printshellcmds=False,
         assume_shared_fs=True,
         keepincomplete=False,
+        keepgoing=False,
     ):
         super().__init__(
             workflow,
@@ -240,6 +241,7 @@ class RealExecutor(AbstractExecutor):
         self.assume_shared_fs = assume_shared_fs
         self.stats = Stats()
         self.snakefile = workflow.main_snakefile
+        self.keepgoing = keepgoing
 
     def register_job(self, job):
         job.register()
@@ -325,6 +327,7 @@ class RealExecutor(AbstractExecutor):
                 "--nolock",
                 "--ignore-incomplete",
                 format_cli_arg("--keep-incomplete", self.keepincomplete),
+                format_cli_arg("--keep-going", self.keepgoing),
                 w2a("rerun_triggers"),
                 w2a("cleanup_scripts", flag="--skip-script-cleanup"),
                 w2a("shadow_prefix"),
@@ -714,6 +717,7 @@ class ClusterExecutor(RealExecutor):
         disable_default_resources_args=False,
         disable_envvar_declarations=False,
         keepincomplete=False,
+        keepgoing=False,
     ):
         from throttler import Throttler
 
@@ -726,6 +730,7 @@ class ClusterExecutor(RealExecutor):
             printshellcmds=printshellcmds,
             assume_shared_fs=assume_shared_fs,
             keepincomplete=keepincomplete,
+            keepgoing=keepgoing,
         )
         self.max_status_checks_per_second = max_status_checks_per_second
 
@@ -993,6 +998,7 @@ class GenericClusterExecutor(ClusterExecutor):
         assume_shared_fs=True,
         max_status_checks_per_second=1,
         keepincomplete=False,
+        keepgoing=False,
     ):
         self.submitcmd = submitcmd
         if not assume_shared_fs and statuscmd is None:
@@ -1023,6 +1029,7 @@ class GenericClusterExecutor(ClusterExecutor):
             assume_shared_fs=assume_shared_fs,
             max_status_checks_per_second=max_status_checks_per_second,
             keepincomplete=keepincomplete,
+            keepgoing=keepgoing,
         )
 
         self.sidecar_vars = None
@@ -1370,6 +1377,7 @@ class SynchronousClusterExecutor(ClusterExecutor):
         restart_times=0,
         assume_shared_fs=True,
         keepincomplete=False,
+        keepgoing=False,
     ):
         super().__init__(
             workflow,
@@ -1384,6 +1392,7 @@ class SynchronousClusterExecutor(ClusterExecutor):
             assume_shared_fs=assume_shared_fs,
             max_status_checks_per_second=10,
             keepincomplete=keepincomplete,
+            keepgoing=keepgoing
         )
         self.submitcmd = submitcmd
         self.external_jobid = dict()

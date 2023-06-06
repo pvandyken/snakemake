@@ -465,6 +465,15 @@ class Logger:
             if resources:
                 yield "    resources: " + resources
 
+        def group_info(msg):
+            yield f"    Jobid: {msg['jobid']}"
+            yield f"    Wildcards: {format_wildcards(msg['wildcards'])}"
+            yield f"    Jobs:"
+            for name, jobs in msg.get("jobs", {}).items():
+                yield f"        {name}: {jobs}"
+            yield f"    Resources: {format_resources(msg['resources'])}"
+
+
         def show_logs(logs):
             for f in logs:
                 try:
@@ -517,10 +526,10 @@ class Logger:
             self.last_msg_was_job_info = True
         elif level == "group_info" and not self.is_quiet_about("rules"):
             timestamp()
-            msg = "group job {} (jobs in lexicogr. order):".format(msg["groupid"])
             if not self.last_msg_was_job_info:
-                msg = "\n" + msg
-            self.logger.info(msg)
+                self.logger.info("")
+            self.logger.info(msg["groupid"])
+            self.logger.info("\n".join(map(indent, group_info(msg))))
         elif level == "job_error":
 
             def job_error():
