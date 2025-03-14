@@ -1947,7 +1947,7 @@ class Params(Namedlist):
     pass
 
 
-class ResourceList(Namedlist[str, str | int]):
+class ResourceList(Namedlist):
     pass
 
 
